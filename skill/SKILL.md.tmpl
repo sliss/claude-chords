@@ -1,15 +1,23 @@
 ---
 name: tone
-description: Assign a unique piano chord as the audio cue for this Claude Code session. Each session gets a distinct chord so the user can identify which iTerm tab finished a task by ear. Use when the user types `/tone` (with optional argument like `P4`, `M6`, `maj`, `Cmaj`, `off`, or `list`).
+description: Assign a unique chord as the audio cue for this Claude Code session, on a chosen instrument. Each session gets a distinct sound so the user can identify which iTerm tab finished a task by ear. Use when the user types `/tone` (with optional argument like `P4`, `M6`, `maj`, `Cmaj`, `Cmaj7 pizzicato`, `off`, or `list`).
 ---
 
 # /tone — per-session chord cue
 
-Override the default UserPromptSubmit / Stop / Notification audio cues for this session with a piano chord. The hooks already run for every session; this skill writes a per-session entry into a registry that the hook playback dispatcher reads.
+Override the default UserPromptSubmit / Stop / Notification audio cues for this session with a chord on a chosen instrument. The hooks already run for every session; this skill writes a per-session entry into a registry that the hook playback dispatcher reads.
 
 ## What to do
 
-1. **Canonicalize the user's argument** to one of the forms in the grammar below. The script expects strict suffix matching, so translate natural-language input first. Examples:
+1. **Parse the user's input into two pieces**: the **chord** spec (required; may be empty) and the **instrument** (optional, defaults to piano). The user may write them in any order, in plain English. Examples:
+   - `Cmaj7 pizzicato` → chord `Cmaj7`, instrument `pizz`
+   - `e7 major pizzicato strings` → chord `Emaj7`, instrument `pizz`
+   - `marimba m9` → chord auto-pick m9, instrument `marimba`
+   - `glockenspiel` → chord auto-pick (empty), instrument `bell`
+   - `Bb minor on organ` → chord `Bbm`, instrument `organ`
+   - `pick one for strings` → chord auto-pick, instrument `strings`
+
+2. **Canonicalize the chord spec** to the strict suffix grammar below. Examples:
    - `C major 7` → `Cmaj7`
    - `f sharp minor seven flat five` → `F#m7b5`
    - `B-flat dominant` / `Bb dom 7` → `Bb7`
@@ -19,12 +27,26 @@ Override the default UserPromptSubmit / Stop / Notification audio cues for this 
    - `clear` / `remove` / `stop` / `quiet` → `off`
    - `show all` / `what's assigned` → `list`
    - empty / `random` / `pick one` → empty string
-2. **Don't guess if ambiguous.** If you can't confidently map the input, ask the user instead of passing garbage to the script.
-3. **Run the script** with the canonicalized argument:
+
+3. **Canonicalize the instrument** to one of the six known names. The script accepts only these exact keys:
+   | Canonical | Natural-language synonyms |
+   |---|---|
+   | `piano`   | piano, keys, keyboard, pno |
+   | `pizz`    | pizz, pizzicato, pizzicato strings, plucked, plucked strings |
+   | `marimba` | marimba, xylophone, xylo, mallet |
+   | `organ`   | organ, pipe organ, church organ, hammond, B3 |
+   | `bell`    | bell, bells, glockenspiel, glock, chimes, tubular bells |
+   | `strings` | strings, arco, sustained strings, violin, viola, cello, string section |
+
+4. **Don't guess if ambiguous.** If you can't confidently parse, ask the user. If the instrument is omitted, do not pass `--instrument` (it defaults to piano).
+
+5. **Run the script** with the canonicalized arguments:
    ```bash
-   python3 {{PROJECT_ROOT}}/bin/assign_chord.py "$CANON"
+   python3 {{PROJECT_ROOT}}/bin/assign_chord.py --instrument "$INSTRUMENT" "$CHORD"
    ```
-4. **Relay the script's stdout verbatim** so the user sees the exact chord and notes that were assigned.
+   (If instrument is `piano`/default, the `--instrument` flag is optional but still fine to pass.)
+
+6. **Relay the script's stdout verbatim** so the user sees the exact chord, instrument, and notes that were assigned.
 
 ## Argument grammar
 
@@ -44,5 +66,5 @@ Suffix matching is case-sensitive where it matters (`M7` = major 7th, `m7` = min
 ## Notes
 
 - The script needs a `SessionStart` hook to have registered this session's PID. If the user gets a "could not resolve session_id" error, ask them to restart Claude Code so the hook fires.
-- The script renders three WAV variants once per chord (block, arpeggio up, arpeggio down) and caches them. Subsequent assignments to the same chord are instant.
-- Don't paraphrase the script's output — the user wants to see exactly which notes were assigned.
+- The script renders three WAV variants per (chord, instrument) combination (block, arpeggio up, arpeggio down) and caches them. Subsequent assignments to the same chord+instrument are instant; switching instruments triggers a fresh render (~1–3 seconds).
+- Don't paraphrase the script's output — the user wants to see exactly which notes and instrument were assigned.

@@ -73,11 +73,13 @@ def save_registry(reg: dict) -> None:
         raise
 
 
-def chord_cache_key(notes: list[int], variant: str) -> str:
-    """Stable hash for caching rendered audio."""
-    s = ",".join(str(n) for n in notes) + "|" + variant
+def chord_cache_key(notes: list[int], variant: str, instrument: str = "piano") -> str:
+    """Stable hash for caching rendered audio. Includes instrument so different
+    timbres of the same chord don't collide."""
+    s = ",".join(str(n) for n in notes) + "|" + variant + "|" + instrument
     return hashlib.sha1(s.encode()).hexdigest()[:16]
 
 
-def cache_path(notes: list[int], variant: str) -> Path:
-    return CACHE_DIR / f"{chord_cache_key(notes, variant)}_{variant}.wav"
+def cache_path(notes: list[int], variant: str, instrument: str = "piano") -> Path:
+    h = chord_cache_key(notes, variant, instrument)
+    return CACHE_DIR / f"{h}_{instrument}_{variant}.wav"

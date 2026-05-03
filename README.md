@@ -44,14 +44,28 @@ In any session, run `/tone` (or paste:
 ```
 
 ```
-/tone P4        # perfect-fourth dyad, auto-pick free root
-/tone M6        # major-sixth dyad
-/tone min       # any free minor triad
-/tone Cmaj      # specific triad
-/tone F#dim     # specific triad
-/tone off       # clear; revert to default sounds
-/tone list      # show all current assignments
+/tone P4              # perfect-fourth dyad, auto-pick free root
+/tone M6              # major-sixth dyad
+/tone min             # any free minor triad
+/tone Cmaj            # specific triad
+/tone F#dim           # specific triad
+/tone Cmaj7           # 7th chord
+/tone off             # clear; revert to default sounds
+/tone list            # show all current assignments
 ```
+
+You can also pick the **instrument**. Six built-in voices, all pure-Python (numpy + scipy):
+
+```
+/tone Cmaj7 pizzicato     # plucked strings (Karplus-Strong)
+/tone Em9 marimba         # mallet on wooden bar
+/tone Bb glockenspiel     # bell-like inharmonic partials
+/tone D7 organ            # sustained drawbar stack
+/tone Am9 strings         # detuned saws + lowpass + vibrato
+/tone D                   # piano (default)
+```
+
+The skill canonicalizes natural language, so `pizzicato strings`, `plucked`, `marimba`, `bells`, `pipe organ`, `arco`, etc. all map correctly.
 
 ## Uninstall
 
@@ -80,7 +94,7 @@ Run any of them: `python3 compositions/minuet_baroque.py`. Output goes to `compo
 
 ## How it works
 
-- `bin/synth.py` — additive synthesis, mildly inharmonic, with an attack click. Renders mono 16-bit WAV.
+- `bin/synth.py` — six instruments via different synthesis approaches. Piano: additive harmonics with mild inharmonicity + percussive attack. Pizzicato: Karplus-Strong via `scipy.signal.lfilter` + outer envelope. Marimba: wood-bar partials at 1:4:10 ratios. Organ: harmonic stack with ASR envelope. Bell: inharmonic partials (hum, prime, tierce, quint, nominal). Strings: two detuned sawtooths, lowpass-filtered, with vibrato. Renders mono 16-bit WAV.
 - `bin/midi.py` — Standard MIDI File writer (Type 0, stdlib-only, no `mido` dep).
 - `bin/sequencer.py` — event-list runtime: takes `(start_beat, midi_note, dur_beats, gain)` tuples and produces both `.wav` and `.mid`.
 - `bin/chords.py` — interval/triad vocabulary and auto-pick (avoids labels already in the registry).

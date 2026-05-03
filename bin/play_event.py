@@ -77,8 +77,9 @@ def main() -> int:
         entry = reg.get(sid)
         if entry:
             notes = entry.get("notes")
+            instrument = entry.get("instrument", "piano")
             if notes:
-                wav = cache_path(notes, variant)
+                wav = cache_path(notes, variant, instrument)
                 if wav.exists():
                     play_async(str(wav))
                     return 0
