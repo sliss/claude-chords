@@ -1,0 +1,48 @@
+---
+name: tone
+description: Assign a unique piano chord as the audio cue for this Claude Code session. Each session gets a distinct chord so the user can identify which iTerm tab finished a task by ear. Use when the user types `/tone` (with optional argument like `P4`, `M6`, `maj`, `Cmaj`, `off`, or `list`).
+---
+
+# /tone — per-session chord cue
+
+Override the default UserPromptSubmit / Stop / Notification audio cues for this session with a piano chord. The hooks already run for every session; this skill writes a per-session entry into a registry that the hook playback dispatcher reads.
+
+## What to do
+
+1. **Canonicalize the user's argument** to one of the forms in the grammar below. The script expects strict suffix matching, so translate natural-language input first. Examples:
+   - `C major 7` → `Cmaj7`
+   - `f sharp minor seven flat five` → `F#m7b5`
+   - `B-flat dominant` / `Bb dom 7` → `Bb7`
+   - `perfect fifth` → `P5`
+   - `tritone` / `flat five` → `TT`
+   - `D minor` / `d-minor` → `Dm`
+   - `clear` / `remove` / `stop` / `quiet` → `off`
+   - `show all` / `what's assigned` → `list`
+   - empty / `random` / `pick one` → empty string
+2. **Don't guess if ambiguous.** If you can't confidently map the input, ask the user instead of passing garbage to the script.
+3. **Run the script** with the canonicalized argument:
+   ```bash
+   python3 {{PROJECT_ROOT}}/bin/assign_chord.py "$CANON"
+   ```
+4. **Relay the script's stdout verbatim** so the user sees the exact chord and notes that were assigned.
+
+## Argument grammar
+
+| Argument | Effect |
+|---|---|
+| *(empty)* | Pick an unused triad (rotates through major/minor/dim) |
+| `P4`, `M6`, `m3`, `P5`, `M7`, etc. | Pick an unused dyad of that interval |
+| `maj`, `min`, `dim`, `aug`, `sus2`, `sus4` | Pick an unused triad of that quality |
+| `maj7`, `m7`, `7`, `dim7`, `m7b5`, `mMaj7`, `aug7`, `6`, `m6` | Pick an unused 4-note chord of that quality |
+| `Cmaj`, `F#m`, `Bbdim`, `Esus4` | Specific triad (root + quality) |
+| `Cmaj7` / `CM7`, `Bbm7`, `F#7`, `Edim7`, `Am7b5`, `DmMaj7`, `G6` | Specific 4-note chord |
+| `off` / `clear` | Remove this session's assignment (reverts to default sounds) |
+| `list` | Show all current chord assignments across sessions |
+
+Suffix matching is case-sensitive where it matters (`M7` = major 7th, `m7` = minor 7th). Flat roots are accepted (`Bb`, `Eb`, `Db`, `Ab`, `Gb`) and preserved in the displayed label.
+
+## Notes
+
+- The script needs a `SessionStart` hook to have registered this session's PID. If the user gets a "could not resolve session_id" error, ask them to restart Claude Code so the hook fires.
+- The script renders three WAV variants once per chord (block, arpeggio up, arpeggio down) and caches them. Subsequent assignments to the same chord are instant.
+- Don't paraphrase the script's output — the user wants to see exactly which notes were assigned.
