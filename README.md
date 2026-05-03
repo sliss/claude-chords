@@ -61,9 +61,28 @@ python3 install.py --uninstall
 
 Restores the most recent settings backup and removes the skill symlink. (Cached audio under `state/cache/` and the registry under `state/registry.json` stay; delete the project dir to fully clean up.)
 
+## Compositions
+
+`compositions/` contains short pieces I composed by hand (well, by Claude) using the same synth. Each script defines an event list and calls `sequencer.render()`, which writes both:
+
+- `compositions/output/<name>.wav` — preview audio (gitignored; regenerate with `python3 compositions/<name>.py`)
+- `compositions/output/<name>.mid` — Standard MIDI File you can drag into any DAW
+
+Currently three minuet variations:
+
+| File | Era | Notes |
+|---|---|---|
+| `minuet_classical.py` | Classical | G major, simple I-V-I-vi-V7-I, oompah-pah LH |
+| `minuet_baroque.py` | Baroque | G major, walking bass, trills + mordents + appoggiaturas, V/V at the half cadence, 4-3 suspension |
+| `minuet_romantic.py` | Romantic | Eb major, Chopin-ish broken-chord LH, maj7/9 chords throughout, German augmented 6th at bar 10 |
+
+Run any of them: `python3 compositions/minuet_baroque.py`. Output goes to `compositions/output/`.
+
 ## How it works
 
 - `bin/synth.py` — additive synthesis, mildly inharmonic, with an attack click. Renders mono 16-bit WAV.
+- `bin/midi.py` — Standard MIDI File writer (Type 0, stdlib-only, no `mido` dep).
+- `bin/sequencer.py` — event-list runtime: takes `(start_beat, midi_note, dur_beats, gain)` tuples and produces both `.wav` and `.mid`.
 - `bin/chords.py` — interval/triad vocabulary and auto-pick (avoids labels already in the registry).
 - `bin/registry.py` — JSON-on-disk registry, content-addressed audio cache.
 - `bin/register_session.py` — `SessionStart` hook. Writes `session_id` to `state/sessions/<claude_pid>`.

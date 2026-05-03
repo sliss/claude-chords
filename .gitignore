@@ -17,3 +17,6 @@ __pycache__/
 
 # Debug
 /tmp/claude-chords-debug.log
+
+# Composition output: commit .mid files (canonical), regenerate .wav locally
+compositions/output/*.wav
