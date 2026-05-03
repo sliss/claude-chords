@@ -127,4 +127,7 @@ alto(21, 62); alto(22, 59); alto(23, 59)
 
 
 if __name__ == "__main__":
-    render(events, name="minuet_baroque", bpm=BPM, total_beats=24)
+    from sequencer import cli_instrument
+    args = cli_instrument()
+    render(events, name="minuet_baroque", bpm=BPM, total_beats=24,
+           instrument=args.instrument, play=args.play)

@@ -230,6 +230,18 @@ BLOCK_DUR: dict[str, float] = {
     "strings": 2.5,
 }
 
+# General MIDI program numbers for the "real" version of each timbre.
+# Used when emitting MIDI files so a DAW or external player picks a sensible
+# patch automatically.
+GM_PROGRAM: dict[str, int] = {
+    "piano":   0,    # Acoustic Grand Piano
+    "pizz":    45,   # Pizzicato Strings
+    "marimba": 12,   # Marimba
+    "organ":   19,   # Church Organ
+    "bell":    9,    # Glockenspiel
+    "strings": 48,   # String Ensemble 1
+}
+
 
 def voice(midi: int, duration: float, instrument: str = "piano",
           gain: float | None = None) -> np.ndarray:

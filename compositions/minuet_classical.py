@@ -66,4 +66,7 @@ events.append((21, 59, 3.0, 0.18))   # B3
 events.append((21, 62, 3.0, 0.18))   # D4
 
 if __name__ == "__main__":
-    render(events, name="minuet_classical", bpm=BPM, total_beats=24)
+    from sequencer import cli_instrument
+    args = cli_instrument()
+    render(events, name="minuet_classical", bpm=BPM, total_beats=24,
+           instrument=args.instrument, play=args.play)
