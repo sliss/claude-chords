@@ -23,11 +23,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 BIN = ROOT / "bin"
-SKILL_TMPL = ROOT / "skill" / "SKILL.md.tmpl"
-SKILL_DST_DIR = Path.home() / ".claude" / "skills" / "tone"
-SKILL_DST = SKILL_DST_DIR / "SKILL.md"
 SETTINGS = Path.home() / ".claude" / "settings.json"
 FALLBACKS_PATH = ROOT / "state" / "fallbacks.json"
+
+# Skills installed by this project: (template_name, install_subdir).
+SKILLS: list[tuple[str, str]] = [
+    ("SKILL.md.tmpl",     "tone"),       # /tone — chord assignment
+    ("LEITMOTIF.md.tmpl", "leitmotif"),  # /leitmotif — composed motif
+]
 
 # Each hook command is wrapped to background and silence output.
 def hook_cmd(event: str) -> str:
@@ -41,13 +44,18 @@ def session_start_cmd() -> str:
     return f"python3 {BIN / 'register_session.py'}"
 
 
-def install_skill() -> None:
-    SKILL_DST_DIR.mkdir(parents=True, exist_ok=True)
-    rendered = SKILL_TMPL.read_text().replace("{{PROJECT_ROOT}}", str(ROOT))
-    if SKILL_DST.is_symlink() or SKILL_DST.exists():
-        SKILL_DST.unlink()
-    SKILL_DST.write_text(rendered)
-    print(f"  skill: rendered {SKILL_TMPL.name} -> {SKILL_DST}")
+def install_skills() -> None:
+    """Render every (template, subdir) pair in SKILLS to ~/.claude/skills/<subdir>/SKILL.md."""
+    for tmpl_name, subdir in SKILLS:
+        tmpl_path = ROOT / "skill" / tmpl_name
+        dst_dir = Path.home() / ".claude" / "skills" / subdir
+        dst = dst_dir / "SKILL.md"
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        rendered = tmpl_path.read_text().replace("{{PROJECT_ROOT}}", str(ROOT))
+        if dst.is_symlink() or dst.exists():
+            dst.unlink()
+        dst.write_text(rendered)
+        print(f"  skill: rendered {tmpl_name} -> {dst}")
 
 
 def extract_fallbacks_from_settings(settings: dict) -> dict:
@@ -126,7 +134,7 @@ def install() -> int:
         print(f"ERROR: {SETTINGS} does not exist", file=sys.stderr)
         return 1
     print("Installing claude-chords...")
-    install_skill()
+    install_skills()
     backup_settings()
     prev_settings = json.loads(SETTINGS.read_text())
     maybe_seed_fallbacks(prev_settings)
@@ -150,9 +158,11 @@ def uninstall() -> int:
         return 1
     shutil.copy2(bak, SETTINGS)
     print(f"Restored settings from {bak}")
-    if SKILL_DST.exists() or SKILL_DST.is_symlink():
-        SKILL_DST.unlink()
-        print(f"Removed skill symlink {SKILL_DST}")
+    for _, subdir in SKILLS:
+        dst = Path.home() / ".claude" / "skills" / subdir / "SKILL.md"
+        if dst.exists() or dst.is_symlink():
+            dst.unlink()
+            print(f"Removed skill {dst}")
     print("Done.")
     return 0
 

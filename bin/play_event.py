@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 from registry import (
+    CACHE_DIR,
     SYSTEM_FALLBACK,
     cache_path,
     load_fallbacks,
@@ -76,6 +77,16 @@ def main() -> int:
         reg = load_registry()
         entry = reg.get(sid)
         if entry:
+            # Stop has the highest-priority override: a session-specific
+            # leitmotif (LLM-composed melody). Falls through to the chord
+            # block if no leitmotif is assigned.
+            if event == "Stop":
+                leit = entry.get("leitmotif")
+                if leit and leit.get("hash"):
+                    wav = CACHE_DIR / f"leitmotif_{leit['hash']}.wav"
+                    if wav.exists():
+                        play_async(str(wav))
+                        return 0
             notes = entry.get("notes")
             instrument = entry.get("instrument", "piano")
             if notes:

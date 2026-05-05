@@ -54,6 +54,8 @@ def cmd_list(reg: dict) -> str:
         return "No chord assignments yet."
     lines = ["Current chord assignments:"]
     for sid, entry in reg.items():
+        if "label" not in entry:
+            continue
         sid_short = sid[:8]
         instr = entry.get("instrument", "piano")
         lines.append(f"  {sid_short}  {entry['label']:<14} [{midi_label(entry['notes'])}]  ({instr})")
@@ -144,7 +146,7 @@ def main() -> int:
         print(f"ERROR: {e}\n\n{usage_msg()}", file=sys.stderr)
         return 2
 
-    used_labels = {e["label"] for s, e in reg.items() if s != sid}
+    used_labels = {e["label"] for s, e in reg.items() if s != sid and "label" in e}
 
     if isinstance(parsed, Chord):
         chord = parsed

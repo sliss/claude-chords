@@ -1,0 +1,81 @@
+---
+name: leitmotif
+description: Compose a short musical leitmotif (4-12 notes, 1.5-3.5 seconds) that captures the character of this Claude Code session, and assign it to play whenever a turn finishes (Stop hook). Use when the user types `/leitmotif` (with optional argument like a mood, key, or instrument hint such as "celebratory", "minor", "in F#", "on marimba").
+---
+
+# /leitmotif — per-session theme on task completion
+
+Compose a short motif that musically reflects what this session has been about, render it, and register it on the Stop hook for this session. The leitmotif overrides whatever Stop sound `/tone` would play (if any); UserPromptSubmit and Notification are unchanged.
+
+## What to do
+
+1. **Reflect on the session's character.** Look at the conversation history visible to you. Ask yourself:
+   - What was the user working on? (debugging, shipping, refactoring, exploring, building from scratch)
+   - What was the emotional arc? (frustration→relief, steady progress, exploration, celebration)
+   - Were there any thematic elements that translate musically? (e.g. ragtime project → ragtime fragment; security review → tense minor harmonies; finishing a long bug hunt → V-I cadence with relief)
+
+   Don't over-explain this in your response; it's compositional input. Examples of mood → musical choice:
+   | Session character | Suggested musical choices |
+   |---|---|
+   | Long debugging, finally fixed | Minor key opening, chromatic struggle, resolves to major or relative-major cadence |
+   | Shipped a feature | Major key, ascending arpeggio, strong V-I |
+   | Quiet refactor / cleanup | Modal phrase (Lydian or Mixolydian), balanced shape, gentle |
+   | Research, lots of unknowns | Question-feel: rising line ending on a non-tonic; or open fifth |
+   | Build broke, unresolved | Diminished or unresolved (V or vii°), don't end on tonic |
+   | Pure fun / playful | Off-beat syncopation, surprising leap |
+   | Reviewing or auditing | Steady, no rubato; balanced phrase, medium tempo |
+
+2. **Compose the motif.** Constraints (must follow):
+   - 4 to 12 distinct note onsets (overlapping notes for chords/voices count separately)
+   - Total duration **1.5 to 3.5 seconds** at your chosen BPM
+   - All MIDI pitches in [48, 84] (C3 to C6) — keep it in a hearable range
+   - Use the same `[start_beat, midi, dur_beats, gain]` event format as the sequencer
+   - End on a strong note: held longer (≥1 beat) and on a chord tone of the implied key
+   - `gain` per event in the range 0.25–0.6
+
+   Optional craft (use if it serves the mood):
+   - Multiple voices: overlap events at the same start_beat to make a chord, or run a bass line under the melody
+   - Anacrusis / pickup: start with a short note before beat 1
+   - Cadential motion: penultimate note on V (5th or 7th of the implied key), final on I
+
+3. **Honor the user's hint** in the argument:
+   - mood word ("celebratory", "tense", "playful", "elegiac") → shapes key and contour
+   - key name ("in F#", "minor key", "Bb") → use that as tonic
+   - instrument name ("on marimba", "pizzicato", "bells", "organ", "strings") → set `instrument` accordingly. Known instruments: `piano`, `pizz`, `marimba`, `organ`, `bell`, `strings`. Default piano.
+   - empty → choose freely based on session context
+
+4. **Render via stdin JSON.** Pipe the payload to the script:
+
+   ```bash
+   python3 {{PROJECT_ROOT}}/bin/assign_leitmotif.py <<'JSON'
+   {
+     "events": [
+       [0.0, 60, 0.5, 0.4],
+       [0.5, 64, 0.5, 0.4],
+       [1.0, 67, 0.5, 0.4],
+       [1.5, 72, 1.0, 0.5]
+     ],
+     "bpm": 100,
+     "instrument": "piano",
+     "label": "<short evocative title, 2-5 words>",
+     "description": "<one sentence on what musical idea reflects what session moment>"
+   }
+   JSON
+   ```
+
+   Numbers in events: `[start_beat, midi_note, duration_beats, gain]`.
+
+5. **Preview it for the user.** After the script succeeds, parse the `cache: <path>` line from its output and play it once so they hear it immediately:
+
+   ```bash
+   afplay "<path-from-script-output>"
+   ```
+
+6. **Tell the user**, briefly, the title, key/mood, and *why* it fits this session — one or two sentences. Don't over-narrate.
+
+## Notes
+
+- The leitmotif overrides only the Stop sound. If `/tone` was also set, UserPromptSubmit still plays the chord arpeggio, Notification still plays the descending arpeggio, but Stop plays this melody.
+- Re-running `/leitmotif` replaces the previous one for this session. The composition is fresh each time, so calling it again later in a long session lets you re-characterize.
+- Cached WAVs are content-addressed by note hash, so identical motifs don't re-render.
+- The script enforces: ≤ 64 notes, total duration ≤ 5s, MIDI pitches in [21, 108], gain in (0, 1].
