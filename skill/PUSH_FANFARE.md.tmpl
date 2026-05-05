@@ -1,0 +1,32 @@
+---
+name: push-fanfare
+description: Toggle whether a Final Fantasy-style victory fanfare plays automatically after every successful `git push`. Use when the user types `/push-fanfare` (with optional argument like `on`, `off`, `toggle`, `status`).
+---
+
+# /push-fanfare — toggle the post-push victory fanfare
+
+When enabled, a piano fanfare (`compositions/output/victory_fanfare.wav`) plays right after `git push` succeeds. The shell function that calls `afplay` was added to the user's `~/.bash_profile` by `install.py`; this skill controls a marker file that the function checks each time.
+
+## What to do
+
+Parse the user's argument and run the script with the canonical action. Don't guess if input is ambiguous — ask first.
+
+| User input | Pass to script | Effect |
+|---|---|---|
+| empty, `toggle`, `flip`, `swap` | `toggle` | flip current state |
+| `on`, `enable`, `yes`, `play`, `start` | `on` | enable |
+| `off`, `disable`, `no`, `quiet`, `mute`, `stop` | `off` | disable |
+| `status`, `is it on`, `state` | `status` | report only, no change |
+
+```bash
+python3 {{PROJECT_ROOT}}/bin/push_fanfare.py "$ACTION"
+```
+
+Relay the script's stdout verbatim — it prints the resulting state.
+
+## Notes
+
+- The state marker is at `{{PROJECT_ROOT}}/state/push_fanfare.enabled`. Persistent across Claude Code sessions and shell tab restarts.
+- If the user's shell function isn't active yet (e.g., they just installed and haven't opened a new shell tab), tell them to either open a new tab or `source ~/.bash_profile`.
+- Default state on first install: OFF (the user must opt in).
+- This only affects the bash shell function. If the user uses zsh or another shell, they'd need to install the equivalent function there manually.

@@ -28,9 +28,71 @@ FALLBACKS_PATH = ROOT / "state" / "fallbacks.json"
 
 # Skills installed by this project: (template_name, install_subdir).
 SKILLS: list[tuple[str, str]] = [
-    ("SKILL.md.tmpl",     "tone"),       # /tone — chord assignment
-    ("LEITMOTIF.md.tmpl", "leitmotif"),  # /leitmotif — composed motif
+    ("SKILL.md.tmpl",         "tone"),          # /tone — chord assignment
+    ("LEITMOTIF.md.tmpl",     "leitmotif"),     # /leitmotif — composed motif
+    ("PUSH_FANFARE.md.tmpl",  "push-fanfare"),  # /push-fanfare — toggle
 ]
+
+# Shell function appended to ~/.bash_profile. Wraps git, plays the victory
+# fanfare wav after a successful `git push` IF the marker file exists.
+BASH_PROFILE = Path.home() / ".bash_profile"
+SHELL_BLOCK_BEGIN = "# >>> claude-chords push fanfare >>>"
+SHELL_BLOCK_END   = "# <<< claude-chords push fanfare <<<"
+
+
+def shell_block(project_root: Path) -> str:
+    marker = project_root / "state" / "push_fanfare.enabled"
+    wav = project_root / "compositions" / "output" / "victory_fanfare.wav"
+    return (
+        f"{SHELL_BLOCK_BEGIN}\n"
+        f"# Plays a victory fanfare after a successful `git push`, IF\n"
+        f"# the marker file is present. Toggle via `/push-fanfare on|off`.\n"
+        f"git() {{\n"
+        f'  if [ "$1" = "push" ]; then\n'
+        f'    command git "$@"\n'
+        f'    local rc=$?\n'
+        f'    if [ $rc -eq 0 ] && [ -f "{marker}" ] && [ -f "{wav}" ]; then\n'
+        f'      (afplay "{wav}" >/dev/null 2>&1 &)\n'
+        f"    fi\n"
+        f"    return $rc\n"
+        f"  fi\n"
+        f'  command git "$@"\n'
+        f"}}\n"
+        f"{SHELL_BLOCK_END}\n"
+    )
+
+
+def install_shell_block() -> None:
+    """Idempotent append to ~/.bash_profile. Replaces an existing block if
+    one is present (so paths get refreshed if the user moves the project)."""
+    block = shell_block(ROOT)
+    if BASH_PROFILE.exists():
+        existing = BASH_PROFILE.read_text()
+    else:
+        existing = ""
+    # Strip any prior block
+    if SHELL_BLOCK_BEGIN in existing and SHELL_BLOCK_END in existing:
+        before, _, rest = existing.partition(SHELL_BLOCK_BEGIN)
+        _, _, after = rest.partition(SHELL_BLOCK_END)
+        # Preserve a single trailing newline at the seam.
+        existing = before.rstrip() + "\n" + after.lstrip()
+    new = existing.rstrip() + "\n\n" + block
+    BASH_PROFILE.write_text(new)
+    print(f"  shell: appended push-fanfare function to {BASH_PROFILE}")
+    print(f"         (open a new shell tab or `source {BASH_PROFILE}` to activate)")
+
+
+def remove_shell_block() -> None:
+    if not BASH_PROFILE.exists():
+        return
+    existing = BASH_PROFILE.read_text()
+    if SHELL_BLOCK_BEGIN not in existing:
+        return
+    before, _, rest = existing.partition(SHELL_BLOCK_BEGIN)
+    _, _, after = rest.partition(SHELL_BLOCK_END)
+    new = before.rstrip() + "\n" + after.lstrip()
+    BASH_PROFILE.write_text(new.rstrip() + "\n")
+    print(f"  shell: removed push-fanfare function from {BASH_PROFILE}")
 
 # Each hook command is wrapped to background and silence output.
 def hook_cmd(event: str) -> str:
@@ -135,6 +197,7 @@ def install() -> int:
         return 1
     print("Installing claude-chords...")
     install_skills()
+    install_shell_block()
     backup_settings()
     prev_settings = json.loads(SETTINGS.read_text())
     maybe_seed_fallbacks(prev_settings)
@@ -163,6 +226,7 @@ def uninstall() -> int:
         if dst.exists() or dst.is_symlink():
             dst.unlink()
             print(f"Removed skill {dst}")
+    remove_shell_block()
     print("Done.")
     return 0
 
