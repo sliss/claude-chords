@@ -22,11 +22,13 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import time
 from pathlib import Path
 
 from find_session import find_session_id
 from registry import (
     CACHE_DIR,
+    LEITMOTIFS_LOG,
     ensure_dirs,
     load_registry,
     save_registry,
@@ -131,9 +133,7 @@ def main() -> int:
                            instrument=instrument)
         write_wav(wav, audio)
 
-    reg = load_registry()
-    entry = reg.get(sid, {})
-    entry["leitmotif"] = {
+    motif = {
         "hash": h,
         "label": label,
         "description": description,
@@ -142,8 +142,24 @@ def main() -> int:
         "events": events,
         "duration_s": round(duration_s, 2),
     }
+
+    reg = load_registry()
+    entry = reg.get(sid, {})
+    entry["leitmotif"] = motif
     reg[sid] = entry
     save_registry(reg)
+
+    # Append to the permanent gallery. Registry entries get overwritten when
+    # a session is re-assigned; this log is the durable record of every motif
+    # ever composed (one JSON object per line, never rewritten).
+    log_entry = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "session_id": sid,
+        "wav": str(wav),
+        **motif,
+    }
+    with LEITMOTIFS_LOG.open("a") as f:
+        f.write(json.dumps(log_entry) + "\n")
 
     # Output: the path on its own line so the skill can afplay it for preview.
     print(f"Leitmotif assigned: {label!r}")

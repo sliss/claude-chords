@@ -13,6 +13,7 @@ SESSIONS_DIR = STATE_DIR / "sessions"     # <claude_pid> -> session_id
 CACHE_DIR = STATE_DIR / "cache"           # rendered .wav files
 REGISTRY_PATH = STATE_DIR / "registry.json"
 FALLBACKS_PATH = STATE_DIR / "fallbacks.json"
+LEITMOTIFS_LOG = STATE_DIR / "leitmotifs.jsonl"   # append-only gallery
 
 # System sounds used when no chord is assigned and no user fallback is set.
 SYSTEM_FALLBACK = {
